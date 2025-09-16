@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Templates Admin</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --card: #141a2b;
+      --muted: #9aa4b2;
+      --primary: #4f8afc;
+      --green: #2ecc71;
+      --red: #e74c3c;
+      --white: #fff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: linear-gradient(#0b1120, #0a0f1a);
+      color: var(--white);
+      padding: 20px;
+    }
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    h1 { margin: 0 0 12px; font-size: 28px; }
+    .grid {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 20px;
+    }
+    .card {
+      background: rgba(20,26,43,.95);
+      border: 1px solid #2b2f52;
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,.25);
+    }
+    .card h2 { font-size: 18px; margin: 0 0 12px; }
+    label { font-size: 12px; color: var(--muted); }
+    input[type="text"], textarea {
+      width: 100%; padding: 10px; margin: 6px 0 12px; border-radius: 6px;
+      border: 1px solid #3a3f68; background: #0e1530; color: var(--white);
+    }
+    textarea { height: 120px; resize: vertical; }
+    button {
+      padding: 10px 14px; border-radius: 6px; border: none; cursor: pointer;
+      background: var(--primary); color: white; margin-right: 8px;
+    }
+    button.secondary { background: #2b2f52; }
+    table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+    th, td { padding: 8px; border-bottom: 1px solid #2b2f52; text-align: left; font-family: monospace; }
+    .row-actions button { padding: 6px 8px; font-size: 12px; }
+    .tag { font-size: 11px; padding: 2px 6px; border-radius: 999px; background: #1a1f3a; color: #cbd5e1; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Темплейти</h1>
+
+    <div class="grid">
+      <section class="card" id="list-section">
+        <h2>Список темплейтів</h2>
+        <table id="templates-table" aria-label="Templates list">
+          <thead>
+            <tr>
+              <th>Назва</th>
+              <th>Дії</th>
+            </tr>
+          </thead>
+          <tbody id="templates-tbody">
+          </tbody>
+        </table>
+      </section>
+
+      <section class="card" id="editor-section">
+        <h2 id="editor-title">Створити новий темплейт</h2>
+        <div>
+          <label for="template-name">Назва</label>
+          <input type="text" id="template-name" placeholder="Назва темплейту" />
+        </div>
+        <div>
+          <label for="template-html">HTML шаблон</label>
+          <textarea id="template-html" placeholder="<div>Your html here</div>"></textarea>
+        </div>
+        <div style="margin-top: 8px;">
+          <button id="save-button">Створити новий темплейт</button>
+          <button class="secondary" id="clear-edit">Очистити</button>
+        </div>
+        <hr>
+        <h2>Згенерувати PDF</h2>
+        <div>
+          <label for="pdf-json">JSON дані для шаблону</label>
+          <textarea id="pdf-json" placeholder='{"name":"John"}' style="height:100px"></textarea>
+        </div>
+        <div>
+          <button id="generate-pdf-button">Згенерувати PDF</button>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    const apiBase = 'http://localhost:5000/api/templates';
+    let editingId = null;
+
+    async function fetchTemplates() {
+      try {
+        const res = await fetch(apiBase);
+        const data = await res.json();
+        renderTemplates(data);
+      } catch (e) {
+        console.error('Failed to fetch templates', e);
+      }
+    }
+
+    function renderTemplates(items) {
+      const tbody = document.getElementById('templates-tbody');
+      tbody.innerHTML = '';
+      items.forEach(t => {
+        const tr = document.createElement('tr');
+        const nameTd = document.createElement('td');
+        nameTd.textContent = t.name;
+        const actionsTd = document.createElement('td');
+        actionsTd.className = 'row-actions';
+        const editBtn = document.createElement('button');
+        editBtn.textContent = 'Редагувати';
+        editBtn.onclick = () => startEdit(t);
+        const delBtn = document.createElement('button');
+        delBtn.textContent = 'Видалити';
+        delBtn.style.marginLeft = '6px';
+        delBtn.onclick = () => deleteTemplate(t.id);
+        actionsTd.appendChild(editBtn);
+        actionsTd.appendChild(delBtn);
+
+        tr.appendChild(nameTd);
+        tr.appendChild(actionsTd);
+        tbody.appendChild(tr);
+      });
+    }
+
+    function startEdit(template) {
+      editingId = template.id;
+      document.getElementById('editor-title').textContent = 'Редагувати темплейт';
+      document.getElementById('template-name').value = template.name;
+      document.getElementById('template-html').value = template.content;
+      document.getElementById('save-button').textContent = 'Зберегти зміни';
+    }
+
+    async function saveTemplate() {
+      const name = document.getElementById('template-name').value.trim();
+      const html = document.getElementById('template-html').value;
+      if (!name) {
+        alert('Введіть назву');
+        return;
+      }
+      const payload = { name, content: html };
+      try {
+        if (editingId == null) {
+          const res = await fetch(apiBase, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          if (!res.ok) throw new Error('Failed to create');
+        } else {
+          const res = await fetch(`${apiBase}/${editingId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          if (!res.ok) throw new Error('Failed to update');
+        }
+        editingId = null;
+        document.getElementById('editor-title').textContent = 'Створити новий темплейт';
+        document.getElementById('template-name').value = '';
+        document.getElementById('template-html').value = '';
+        document.getElementById('save-button').textContent = 'Створити новий темплейт';
+        await fetchTemplates();
+      } catch (e) {
+        console.error(e);
+        alert('Не вдалося зберегти темплейт');
+      }
+    }
+
+    async function deleteTemplate(id) {
+      if (!confirm('Ви справді хочете видалити цей темплейт?')) return;
+      try {
+        const res = await fetch(`${apiBase}/${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Failed to delete');
+        await fetchTemplates();
+      } catch (e) {
+        console.error(e);
+        alert('Не вдалося видалити темплейт');
+      }
+    }
+
+    async function generatePdf() {
+      if (editingId == null) {
+        alert('Необхідно обрати темплейт або вказати ID для PDF');
+        return;
+      }
+      const jsonText = document.getElementById('pdf-json').value;
+      let jsonData;
+      try {
+        jsonData = jsonText ? JSON.parse(jsonText) : {};
+      } catch (e) {
+        alert('Неправильний JSON');
+        return;
+      }
+      try {
+        const res = await fetch(`${apiBase}/${editingId}/generate-pdf`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(jsonData)
+        });
+        if (!res.ok) throw new Error('PDF generation failed');
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'document.pdf';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      } catch (e) {
+        console.error(e);
+        alert('Помилка генерації PDF');
+      }
+    }
+
+    document.getElementById('save-button').addEventListener('click', saveTemplate);
+    document.getElementById('clear-edit').addEventListener('click', () => {
+      editingId = null;
+      document.getElementById('editor-title').textContent = 'Створити новий темплейт';
+      document.getElementById('template-name').value = '';
+      document.getElementById('template-html').value = '';
+      document.getElementById('save-button').textContent = 'Створити новий темплейт';
+    });
+    document.getElementById('generate-pdf-button').addEventListener('click', generatePdf);
+
+    fetchTemplates();
+  </script>
+</body>
+</html>

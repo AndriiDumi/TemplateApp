@@ -1,0 +1,33 @@
+# Build folders
+**/bin/
+**/obj/
+
+# IDE settings
+.vscode/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Git
+**/.git/
+.gitignore
+
+# System files
+*.swp
+*.tmp
+*.DS_Store
+Thumbs.db
+
+# Docker overrides
+docker-compose.override.yml
+Dockerfile.*
+
+# Environment files
+.env
+*.env
+
+# Logs
+logs/
+*.log
