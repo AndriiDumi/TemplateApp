@@ -9,7 +9,7 @@
 
 ## 🛠 Технології
 
-- **Backend:** C#, .NET 8, EF Core  
+- **Backend:** ASP.NET Core Web API, .NET 8, EF Core  
 - **База даних:** PostgreSQL
 - **PDF генерація:** PuppeteerSharp + Handlebars
 - **Frontend:** HTML, CSS, JS
