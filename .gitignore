@@ -409,7 +409,6 @@ desktop.ini
 /tests/WebServer.Tests/obj
 src/WebServer.API/appsettings.json
 /src/WebServer.API/wwwroot
-*.yml
-docker/.env
+*.yml !docker/docker-compose.yml
 /src/.vscode
 backend/docker/.env
